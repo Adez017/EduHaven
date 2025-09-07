@@ -130,7 +130,7 @@ export class SFUConnection {
           consumer,
           producerId,
           kind,
-          peerId: this.getPeerIdByProducerId(producerId),
+          peerId: data.peerId || this.getPeerIdByProducerId(producerId),
         });
 
         // Resume the consumer
@@ -470,11 +470,12 @@ export class SFUConnection {
   }
 
   getPeerIdByProducerId(producerId) {
-    // This would need to be tracked when consumers are created
-    // For now, we'll extract it from the consumer info when available
-    for (const [consumerId, consumerInfo] of this.consumers) {
-      if (consumerInfo.producerId === producerId) {
-        return consumerInfo.peerId;
+    // Look through existing producers to find the peer
+    for (const [socketRoom] of this.socket.rooms) {
+      if (socketRoom.startsWith('video-')) {
+        // This is a simplified approach - in a real implementation,
+        // you'd want to track producer-to-peer mappings more explicitly
+        return 'remote-peer'; // Placeholder
       }
     }
     return 'unknown';

@@ -182,7 +182,14 @@ const handleSFUOperations = (socket, io, mediaRouter) => {
         rtpCapabilities
       );
 
-      socket.emit('consumer-created', consumerInfo);
+      // Include peer information in response
+      const producerInfo = mediaRouter.producers.get(producerId);
+      const responseData = {
+        ...consumerInfo,
+        peerId: producerInfo ? producerInfo.peerId : 'unknown',
+      };
+
+      socket.emit('consumer-created', responseData);
 
       console.log(`Consumer ${consumerInfo.id} created for peer ${peerId}`);
     } catch (error) {
