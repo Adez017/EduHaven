@@ -1,12 +1,27 @@
 import jwt from "jsonwebtoken";
 import { handleRoomOperations } from "./roomHandlers.js";
 import { handleMessageOperations } from "./messageHandlers.js";
+import { handleSFUOperations } from "../SFU/sfuHandlers.js";
+import MediaRouter from "../SFU/mediaRouter.js";
 // import { handleVoiceOperations } from "./voiceHandlers.js";
 
 const onlineUsers = new Map();
 const userSockets = new Map();
 let connections = {};
 let timeOnline = {};
+
+// Initialize MediaRouter for SFU functionality
+const mediaRouter = new MediaRouter();
+
+const initializeMediaRouter = async () => {
+  try {
+    await mediaRouter.initialize();
+    console.log('SFU MediaRouter initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize SFU MediaRouter:', error);
+    process.exit(1);
+  }
+};
 
 const authenticateSocket = (socket, next) => {
   try {
@@ -30,7 +45,10 @@ const authenticateSocket = (socket, next) => {
   }
 };
 
-const initializeSocket = (io) => {
+const initializeSocket = async (io) => {
+  // Initialize MediaRouter first
+  await initializeMediaRouter();
+
   io.use(authenticateSocket);
 
   const broadcastOnlineList = () => {
@@ -62,6 +80,7 @@ const initializeSocket = (io) => {
 
     handleRoomOperations(socket, io, onlineUsers);
     handleMessageOperations(socket, io);
+    handleSFUOperations(socket, io, mediaRouter);
     // handleVoiceOperations(socket, io);
 
     // webrtc handlers:----------------------------------------------
@@ -151,4 +170,4 @@ const initializeSocket = (io) => {
   console.log("Socket.IO initialized successfully");
 };
 
-export { initializeSocket, onlineUsers, userSockets };
+export { initializeSocket, onlineUsers, userSockets, mediaRouter };

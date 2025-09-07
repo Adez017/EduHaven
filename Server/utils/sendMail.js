@@ -9,10 +9,17 @@ global.Request = Request;
 global.Response = Response;
 
 dotenv.config();
-const resend = new Resend(process.env.RESEND_KEY);
+
+// Only initialize Resend if API key is provided
+const resend = process.env.RESEND_KEY ? new Resend(process.env.RESEND_KEY) : null;
 
 const sendEmail = async (Email, FirstName, otp,emailType) => {
   try {
+    // Check if Resend is configured
+    if (!resend) {
+      console.log('Resend not configured, skipping email send');
+      return { success: false, error: 'Email service not configured' };
+    }
     // different email content based on signupor reset
     const emailContent = {
       signup: {
