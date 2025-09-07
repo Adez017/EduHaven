@@ -25,6 +25,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Notes from "./pages/Notes";
 import Delete from "./components/settings/Delete";
 import Chats from "./pages/Chats";
+import SFUTestPage from "./components/SFUTestPage.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
                 <Route path="settings/" element={<Settings />} />
                 <Route path="friends" element={<FriendsPage />} />
                 <Route path="chat" element={<Chats />} />
+                <Route path="sfu-test" element={<SFUTestPage />} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
 
