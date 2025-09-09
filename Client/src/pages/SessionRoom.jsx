@@ -54,62 +54,31 @@ function SessionRoom() {
         {/* Video Area */}
         <div className="flex-1 bg-black relative">
           {/* Local Video */}
-          {/* <div className="absolute top-4 right-4 w-48 h-32 bg-gray-800 rounded-lg overflow-hidden z-10">
+          <div className="absolute top-4 right-4 w-48 h-32 bg-gray-800 rounded-lg overflow-hidden z-10">
             <video
-              ref={localVideoRef}
+              ref={localVideoref}
               autoPlay
               muted
               playsInline
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-2 left-2 text-white text-xs bg-black bg-opacity-50 px-2 py-1 rounded">
-              You {isScreenSharing && "(Screen)"}
+              You {screen && "(Screen)"}
             </div>
-          </div> */}
-
-          {/* Remote Videos */}
-          {/* <div className="grid grid-cols-2 gap-4 p-4 h-full">
-            {Array.from(peers.values()).map((peer) => (
-              <div
-                key={peer.userId}
-                className="bg-gray-800 rounded-lg overflow-hidden"
-              >
-                <video
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                  ref={(el) => {
-                    if (el && peer.stream) {
-                      el.srcObject = peer.stream;
-                    }
-                  }}
-                />
-                <div className="absolute bottom-2 left-2 text-white text-xs bg-black bg-opacity-50 px-2 py-1 rounded">
-                  {peer.userId}
-                </div>
-              </div>
-            ))}
-          </div> */}
+          </div>
 
           {/* No video message */}
-          {/* {!isVideoEnabled && peers.size === 0 && !isScreenSharing && (
+          {!videoToggle && videos.length === 0 && !screen && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-white">
-                <Video size={48} className="mx-auto mb-4 opacity-50" />
+                <div className="text-6xl mb-4 opacity-50">📹</div>
                 <p className="text-lg">No video active</p>
                 <p className="text-sm opacity-75">
                   Click the video button to start your camera
                 </p>
               </div>
             </div>
-          )} */}
-
-          <video
-            className={"bg-blue-500 h-[200px]"}
-            ref={localVideoref}
-            autoPlay
-            muted
-          ></video>
+          )}
 
           <VideoConferenceView videos={videos} />
         </div>

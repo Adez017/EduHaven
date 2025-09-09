@@ -28,20 +28,42 @@ const UseConnectToSocketServer = (
     socketIdRef.current = socket.id;
 
     socket.on("user-left", (id) => {
-      console.log("a user left the call");
+      console.log("User left the call:", id);
 
-      setVideos((vs) => vs.filter((v) => v.socketId !== id));
+      // Close and clean up the peer connection
+      if (connections[id]) {
+        connections[id].close();
+        delete connections[id];
+      }
+
+      // Remove the user's video from the UI
+      setVideos((vs) => {
+        const updatedVideos = vs.filter((v) => v.socketId !== id);
+        videoRef.current = updatedVideos;
+        return updatedVideos;
+      });
     });
 
     socket.on("user-joined", (newId, clientList) => {
+      console.log("New user joined call:", newId, "Client list:", clientList);
+      
       clientList.forEach((peerId) => {
-        createPeerConnection(peerId, { current: socket }, videoRef, setVideos);
+        if (peerId !== socketIdRef.current) {
+          createPeerConnection(peerId, { current: socket }, videoRef, setVideos);
+        }
       });
-      console.log("new user call join recieved", newId, clientList);
+      
       if (newId === socketIdRef.current) {
+        // This is us joining, establish connections with existing peers
         Object.keys(connections).forEach((peerId) => {
           if (peerId === socketIdRef.current) return;
-          connections[peerId].addStream(window.localStream);
+          
+          // Add our local stream tracks to the connection
+          if (window.localStream) {
+            window.localStream.getTracks().forEach((track) => {
+              connections[peerId].addTrack(track, window.localStream);
+            });
+          }
           createOfferForConnection(peerId, { current: socket });
         });
       }

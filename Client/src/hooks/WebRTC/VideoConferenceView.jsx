@@ -13,9 +13,9 @@
 
 const VideoConferenceView = ({ videos }) => {
   return (
-    <div>
+    <div className="grid grid-cols-2 gap-4 p-4 h-full">
       {videos.map((video) => (
-        <div key={video.socketId} className="w-[500px] bg-green-500">
+        <div key={video.socketId} className="bg-gray-800 rounded-lg overflow-hidden relative">
           <video
             data-socket={video.socketId}
             ref={(ref) => {
@@ -24,9 +24,23 @@ const VideoConferenceView = ({ videos }) => {
               }
             }}
             autoPlay
-          ></video>
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 text-white text-xs bg-black bg-opacity-50 px-2 py-1 rounded">
+            User {video.socketId.substring(0, 8)}
+          </div>
         </div>
       ))}
+      
+      {videos.length === 0 && (
+        <div className="col-span-2 flex items-center justify-center text-white text-center">
+          <div>
+            <p className="text-lg mb-2">No other participants</p>
+            <p className="text-sm opacity-75">Waiting for others to join...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
