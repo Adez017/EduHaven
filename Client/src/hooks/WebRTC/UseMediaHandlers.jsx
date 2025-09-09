@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { connections, createOfferForConnection } from "./WebRTCConnection.jsx";
-import { createBlackSilence } from "@/utils/mediaUtils.jsx";
+import { createBlackSilence, black, silence } from "@/utils/mediaUtils.jsx";
 
 export const UseMediaHandlers = (
   localVideoref,
@@ -41,18 +41,34 @@ export const UseMediaHandlers = (
     window.localStream = stream;
     localVideoref.current.srcObject = stream;
 
+    // Update existing peer connections with new tracks
     for (let id in connections) {
       if (id === socketIdRef.current) continue;
 
-      connections[id].addStream(window.localStream);
+      // Remove old tracks
+      const senders = connections[id].getSenders();
+      senders.forEach((sender) => {
+        if (sender.track) {
+          connections[id].removeTrack(sender);
+        }
+      });
+
+      // Add new tracks
+      stream.getTracks().forEach((track) => {
+        connections[id].addTrack(track, stream);
+      });
+
       createOfferForConnection(id, socketRef);
     }
 
     stream.getTracks().forEach(
       (track) =>
         (track.onended = () => {
-          setVideo(false);
-          setAudio(false);
+          if (track.kind === 'video') {
+            setVideo(false);
+          } else if (track.kind === 'audio') {
+            setAudio(false);
+          }
 
           try {
             let tracks = localVideoref.current.srcObject.getTracks();
@@ -64,8 +80,18 @@ export const UseMediaHandlers = (
           window.localStream = createBlackSilence();
           localVideoref.current.srcObject = window.localStream;
 
+          // Update peer connections with black silence
           for (let id in connections) {
-            connections[id].addStream(window.localStream);
+            const senders = connections[id].getSenders();
+            senders.forEach((sender) => {
+              if (sender.track) {
+                connections[id].removeTrack(sender);
+              }
+            });
+
+            window.localStream.getTracks().forEach((track) => {
+              connections[id].addTrack(track, window.localStream);
+            });
             createOfferForConnection(id, socketRef);
           }
         })
@@ -74,45 +100,83 @@ export const UseMediaHandlers = (
 
   const getUserMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      // Set screen share availability
+      setScreenAvailable(
+        typeof navigator.mediaDevices.getDisplayMedia === "function"
+      );
 
-      if (stream) {
-        window.localStream = stream;
-        if (localVideoref.current) {
-          localVideoref.current.srcObject = stream;
+      if (videoToggle || audioToggle) {
+        // Request media based on actual toggle states
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: videoToggle, 
+          audio: audioToggle 
+        });
+        
+        // If we got a partial stream (e.g., only audio), we need to add the missing tracks
+        const hasVideo = stream.getVideoTracks().length > 0;
+        const hasAudio = stream.getAudioTracks().length > 0;
+        
+        // Create a complete stream with black video or silent audio if needed
+        const completeStream = new MediaStream();
+        
+        if (videoToggle && hasVideo) {
+          completeStream.addTrack(stream.getVideoTracks()[0]);
+        } else if (!videoToggle) {
+          // Add black video track
+          completeStream.addTrack(black());
+        }
+        
+        if (audioToggle && hasAudio) {
+          completeStream.addTrack(stream.getAudioTracks()[0]);
+        } else if (!audioToggle) {
+          // Add silent audio track
+          completeStream.addTrack(silence());
+        }
+        
+        getUserMediaSuccess(completeStream);
+      } else {
+        // Both video and audio are off, use black silence
+        try {
+          if (localVideoref.current && localVideoref.current.srcObject) {
+            let tracks = localVideoref.current.srcObject.getTracks();
+            tracks.forEach((track) => track.stop());
+          }
+        } catch (e) {
+          console.log(e);
+        }
+
+        window.localStream = createBlackSilence();
+        localVideoref.current.srcObject = window.localStream;
+
+        // Update peer connections
+        for (let id in connections) {
+          if (id === socketIdRef.current) continue;
+
+          const senders = connections[id].getSenders();
+          senders.forEach((sender) => {
+            if (sender.track) {
+              connections[id].removeTrack(sender);
+            }
+          });
+
+          window.localStream.getTracks().forEach((track) => {
+            connections[id].addTrack(track, window.localStream);
+          });
+          createOfferForConnection(id, socketRef);
         }
       }
-
-      setScreenAvailable(
-        typeof navigator.mediaDevices.getDisplayMedia === "function"
-      );
     } catch (error) {
       console.error("Error accessing media devices:", error);
-      setScreenAvailable(
-        typeof navigator.mediaDevices.getDisplayMedia === "function"
-      );
-    }
-
-    if (videoToggle || audioToggle) {
-      navigator.mediaDevices
-        .getUserMedia({ video: videoToggle, audio: audioToggle })
-        .then(getUserMediaSuccess)
-        .then((stream) => {})
-        .catch((e) => console.log(e));
-    } else {
-      try {
-        let tracks = localVideoref.current.srcObject.getTracks();
-        tracks.forEach((track) => track.stop());
-      } catch (e) {
-        console.log(e);
+      
+      // Fallback to black silence
+      window.localStream = createBlackSilence();
+      if (localVideoref.current) {
+        localVideoref.current.srcObject = window.localStream;
       }
     }
   };
 
-  const getDislayMediaSuccess = (stream) => {
+  const getDisplayMediaSuccess = (stream) => {
     try {
       window.localStream.getTracks().forEach((track) => track.stop());
     } catch (e) {
@@ -122,10 +186,23 @@ export const UseMediaHandlers = (
     window.localStream = stream;
     localVideoref.current.srcObject = stream;
 
+    // Update existing peer connections with new tracks
     for (let id in connections) {
       if (id === socketIdRef.current) continue;
 
-      connections[id].addStream(window.localStream);
+      // Remove old tracks
+      const senders = connections[id].getSenders();
+      senders.forEach((sender) => {
+        if (sender.track) {
+          connections[id].removeTrack(sender);
+        }
+      });
+
+      // Add new tracks
+      stream.getTracks().forEach((track) => {
+        connections[id].addTrack(track, stream);
+      });
+
       createOfferForConnection(id, socketRef);
     }
 
@@ -149,13 +226,12 @@ export const UseMediaHandlers = (
     );
   };
 
-  const getDislayMedia = () => {
+  const getDisplayMedia = () => {
     if (screen) {
       if (navigator.mediaDevices.getDisplayMedia) {
         navigator.mediaDevices
-          .getDisplayMedia({ videoToggle: true, audio: true })
-          .then(getDislayMediaSuccess)
-          .then((stream) => {})
+          .getDisplayMedia({ video: true, audio: true })
+          .then(getDisplayMediaSuccess)
           .catch((e) => console.log(e));
       }
     }
@@ -170,7 +246,7 @@ export const UseMediaHandlers = (
 
   useEffect(() => {
     if (screen !== undefined) {
-      getDislayMedia();
+      getDisplayMedia();
     }
   }, [screen]);
 

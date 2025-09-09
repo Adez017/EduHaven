@@ -77,6 +77,22 @@ export const createPeerConnection = (
 
   connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
 
+  // Add connection state change handler
+  connections[socketListId].onconnectionstatechange = () => {
+    const state = connections[socketListId].connectionState;
+    console.log(`Connection state for ${socketListId}: ${state}`);
+    
+    if (state === 'failed' || state === 'disconnected') {
+      console.log(`Cleaning up failed connection for ${socketListId}`);
+      // Remove video for this user
+      setVideos((videos) => {
+        const updatedVideos = videos.filter((video) => video.socketId !== socketListId);
+        videoRef.current = updatedVideos;
+        return updatedVideos;
+      });
+    }
+  };
+
   // Wait for their ice candidate
   connections[socketListId].onicecandidate = function (event) {
     if (event.candidate != null) {
@@ -88,9 +104,9 @@ export const createPeerConnection = (
     }
   };
 
-  // Wait for their video stream
-  connections[socketListId].onaddstream = (event) => {
-    console.log("BEFORE:", videoRef.current);
+  // Wait for their video stream (using modern ontrack instead of onaddstream)
+  connections[socketListId].ontrack = (event) => {
+    console.log("RECEIVED TRACK:", event.streams[0]);
     console.log("FINDING ID: ", socketListId);
 
     let videoExists = videoRef.current.find(
@@ -98,13 +114,13 @@ export const createPeerConnection = (
     );
 
     if (videoExists) {
-      console.log("VIDEO FOUND EXISTING");
+      console.log("VIDEO FOUND EXISTING - UPDATING STREAM");
 
       // Update the stream of the existing video
       setVideos((videos) => {
         const updatedVideos = videos.map((video) =>
           video.socketId === socketListId
-            ? { ...video, stream: event.stream }
+            ? { ...video, stream: event.streams[0] }
             : video
         );
         videoRef.current = updatedVideos;
@@ -112,10 +128,10 @@ export const createPeerConnection = (
       });
     } else {
       // Create a new video
-      console.log("CREATING NEW");
+      console.log("CREATING NEW VIDEO FOR USER:", socketListId);
       let newVideo = {
         socketId: socketListId,
-        stream: event.stream,
+        stream: event.streams[0],
         autoplay: true,
         playsinline: true,
       };
@@ -128,12 +144,16 @@ export const createPeerConnection = (
     }
   };
 
-  // Add the local video stream
+  // Add the local video stream using modern addTrack API
   if (window.localStream !== undefined && window.localStream !== null) {
-    connections[socketListId].addStream(window.localStream);
+    window.localStream.getTracks().forEach((track) => {
+      connections[socketListId].addTrack(track, window.localStream);
+    });
   } else {
     window.localStream = createBlackSilence();
-    connections[socketListId].addStream(window.localStream);
+    window.localStream.getTracks().forEach((track) => {
+      connections[socketListId].addTrack(track, window.localStream);
+    });
   }
 };
 

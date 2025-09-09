@@ -234,7 +234,7 @@ process.on("unhandledRejection", (reason) => {
 async function start() {
   try {
     console.log("🚀 Starting server...");
-    await ConnectDB(); // ensure ConnectDB throws on failure
+    // await ConnectDB(); // temporarily disabled for WebRTC testing
 
     // Initialize your socket handlers after DB ready
     initializeSocket(io);
